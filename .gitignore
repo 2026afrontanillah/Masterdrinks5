@@ -1,0 +1,21 @@
+# Dependencias de Node
+node_modules/
+
+# Variables de entorno
+.env
+
+# Archivos temporales de bloqueo de SQLite (la base de datos real pos_evento.db SÍ se sube)
+pos_evento.db-wal
+pos_evento.db-shm
+*.db-journal
+
+# Archivos del sistema operativo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Reportes y capturas temporales
+tools/capturas/
+public/_shot.html
+diagnostico-npm.txt
+respaldos/
