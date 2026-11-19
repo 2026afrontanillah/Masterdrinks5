@@ -9,7 +9,9 @@
     "reiniciar": "node tools/reiniciar-ventas.js",
     "optimizar": "node tools/optimizar-db.js",
     "medir": "node tools/medir.js",
-    "capturas": "node tools/capturas.js"
+    "capturas": "node tools/capturas.js",
+    "test": "node tools/test-concurrencia-stock.js",
+    "test:concurrencia": "node tools/test-concurrencia-stock.js"
   },
   "keywords": [
     "nodejs",
