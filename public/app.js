@@ -3114,7 +3114,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (metodoActivo === 'mixto') {
             const suma = sumaLineas();
+            const tieneEfectivo = lineasPago.some(l => Number(l.metodo) === EFECTIVO && parseFloat(l.monto) > 0);
             if (Math.abs(suma - orderTotal) < 0.005) {
+                el.classList.add('status-verde');
+            } else if (suma > orderTotal && tieneEfectivo) {
                 el.classList.add('status-verde');
             } else if (suma > orderTotal) {
                 el.classList.add('status-amarillo');
@@ -3136,13 +3139,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function refrescarMixto() {
-        const falta = round2(orderTotal - sumaLineas());
+        const suma = sumaLineas();
+        const falta = round2(orderTotal - suma);
         const caja = document.getElementById('pay-falta');
+        const payConfirmBtn = document.getElementById('pay-confirm-btn');
 
         caja.textContent = Math.abs(falta).toFixed(2) + ' Bs.';
-        caja.classList.toggle('pay-falta-ok', Math.abs(falta) < 0.005);
-        caja.previousElementSibling.textContent =
-            falta < -0.005 ? 'Cambio a devolver' : 'Falta por cubrir';
+        const tieneEfectivo = lineasPago.some(l => Number(l.metodo) === EFECTIVO && parseFloat(l.monto) > 0);
+
+        if (Math.abs(falta) < 0.005) {
+            caja.classList.add('pay-falta-ok');
+            caja.previousElementSibling.textContent = 'Pago exacto';
+            if (payConfirmBtn && metodoActivo === 'mixto') payConfirmBtn.textContent = 'CONFIRMAR PAGO';
+        } else if (falta < -0.005) {
+            caja.classList.toggle('pay-falta-ok', tieneEfectivo);
+            caja.previousElementSibling.textContent = 'Cambio a devolver';
+            if (payConfirmBtn && metodoActivo === 'mixto') {
+                if (tieneEfectivo) {
+                    payConfirmBtn.textContent = `CONFIRMAR PAGO (Cambio: ${Math.abs(falta).toFixed(2)} Bs.)`;
+                } else {
+                    payConfirmBtn.textContent = 'CONFIRMAR PAGO';
+                }
+            }
+        } else {
+            caja.classList.remove('pay-falta-ok');
+            caja.previousElementSibling.textContent = 'Falta por cubrir';
+            if (payConfirmBtn && metodoActivo === 'mixto') payConfirmBtn.textContent = 'CONFIRMAR PAGO';
+        }
 
         mostrarErrorPago('');
         actualizarColorTotalPago();
@@ -3495,6 +3518,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         mostrarErrorPago(`Con ${efRecibido.toFixed(2)} Bs. no alcanza para cubrir el saldo restante de ${resto.toFixed(2)} Bs.`);
                         return null;
                     }
+                    if (efRecibido > 0) {
+                        efectivoRecibido = round2(valNum + efRecibido);
+                    }
                 }
 
                 let refResto = null;
@@ -3553,11 +3579,37 @@ document.addEventListener('DOMContentLoaded', () => {
             mostrarErrorPago('Faltan ' + round2(orderTotal - suma).toFixed(2) + ' Bs. para cubrir el total.');
             return null;
         }
+
+        const lineasEfectivo = conImporte.filter(l => l.metodo === EFECTIVO);
+        const lineasNoEfectivo = conImporte.filter(l => l.metodo !== EFECTIVO);
+        const sumaNoEfectivo = round2(lineasNoEfectivo.reduce((t, l) => t + l.monto, 0));
+
         if (suma > orderTotal + 0.005) {
-            mostrarErrorPago('Los pagos suman ' + suma.toFixed(2) + ' Bs. y el total es ' + orderTotal.toFixed(2) + ' Bs.');
-            return null;
+            // Caso de pagos que superan el total: sólo es válido si hay pago en EFECTIVO para dar cambio
+            if (lineasEfectivo.length === 0) {
+                mostrarErrorPago('Los pagos digitales/vales suman ' + suma.toFixed(2) + ' Bs. y superan el total de ' + orderTotal.toFixed(2) + ' Bs. En pagos sin efectivo no se puede dar cambio.');
+                return null;
+            }
+
+            if (sumaNoEfectivo >= orderTotal - 0.005) {
+                mostrarErrorPago('Los otros métodos (' + sumaNoEfectivo.toFixed(2) + ' Bs.) ya cubren el total de ' + orderTotal.toFixed(2) + ' Bs. Retira el efectivo excedente.');
+                return null;
+            }
+
+            // El efectivo cubre lo que falta para llegar a orderTotal y el resto es cambio
+            const efectivoNecesario = round2(orderTotal - sumaNoEfectivo);
+            const totalEfectivoEntregado = round2(lineasEfectivo.reduce((t, l) => t + l.monto, 0));
+
+            // Guardamos el total entregado para el ticket y cambio
+            efectivoRecibido = round2(sumaNoEfectivo + totalEfectivoEntregado);
+
+            // Devolvemos las líneas no-efectivo por su valor completo, y la línea de efectivo ajustada a lo que realmente ingresa a la cuenta
+            const pagosFinales = lineasNoEfectivo.map(l => pago(l.metodo, l.monto));
+            pagosFinales.push(pago(EFECTIVO, efectivoNecesario));
+            return pagosFinales;
         }
 
+        efectivoRecibido = suma;
         return conImporte.map(l => pago(l.metodo, l.monto));
     }
 
@@ -3735,7 +3787,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     total: typeof result.total === 'number' ? result.total : bodyData.total,
                     items: (result.items && result.items.length) ? result.items : bodyData.items,
                     promociones: result.promociones || [],
-                    recibido: metodoActivo === EFECTIVO ? efectivoRecibido : 0
+                    recibido: efectivoRecibido > 0 ? efectivoRecibido : 0
                 }));
                 // La venta se cerró: la próxima empieza con clave nueva.
                 claveCobro = null;
