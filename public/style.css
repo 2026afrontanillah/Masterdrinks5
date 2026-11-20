@@ -2433,10 +2433,22 @@ select option {
     color: var(--text-primary);
 }
 
+.vale-resto-card {
+    background: rgba(236, 72, 153, 0.08);
+    border: 1.5px solid rgba(236, 72, 153, 0.35);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
 .vale-resto-tabs {
     display: flex;
     gap: 8px;
-    margin-top: 8px;
+    margin-top: 4px;
+    width: 100%;
 }
 
 .vale-resto-tab {
@@ -2445,7 +2457,7 @@ select option {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 9px 8px;
+    padding: 10px 8px;
     border: 1.5px solid rgba(0, 0, 0, 0.12);
     border-radius: 10px;
     background: #ffffff;
@@ -2461,11 +2473,19 @@ select option {
 }
 
 .vale-resto-tab.active {
-    background: rgba(236, 72, 153, 0.12);
+    background: rgba(236, 72, 153, 0.14);
     border-color: #ec4899;
     color: #be185d;
     font-weight: 700;
-    box-shadow: 0 0 0 1px #ec4899;
+    box-shadow: 0 0 0 1.5px #ec4899;
+}
+
+.vale-sub-panel {
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(236, 72, 153, 0.25);
+    border-radius: 10px;
 }
 
 .pay-panel {

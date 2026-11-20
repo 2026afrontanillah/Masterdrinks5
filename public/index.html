@@ -1928,7 +1928,7 @@
                 <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                     <input type="number" id="pay-vale-monto" class="pay-input" min="0" step="0.01" inputmode="decimal"
                         placeholder="0.00 Bs." style="flex: 1; font-size: 1.2rem; font-weight: 700;">
-                    <button type="button" id="pay-vale-total-btn" class="quick-cash-btn" style="flex: 0 0 auto; padding: 0 16px; font-weight: 700; white-space: nowrap;">
+                    <button type="button" id="pay-vale-total-btn" class="secondary-btn" style="flex: 0 0 auto; padding: 0 16px; font-weight: 700; white-space: nowrap;">
                         Total exacto
                     </button>
                 </div>
@@ -1936,16 +1936,45 @@
                     <span>🎟️ El vale cubre la cuenta</span>
                     <strong id="pay-vale-cubierto-msg" style="color: #059669; font-size: 0.95rem;"></strong>
                 </div>
-                <div id="pay-vale-resto-box" class="pay-change hide" style="background: rgba(236, 72, 153, 0.08); border-color: rgba(236, 72, 153, 0.3); border-radius: 12px; padding: 12px 14px; margin-top: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <span style="font-size: 0.85rem; font-weight: 600; color: #831843;">Saldo restante por cobrar:</span>
-                        <strong id="pay-vale-resto-amount" style="color: #be185d; font-size: 1.15rem; font-weight: 800;">0.00 Bs.</strong>
+                <div id="pay-vale-resto-box" class="vale-resto-card hide">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; border-bottom: 1px dashed rgba(236, 72, 153, 0.35);">
+                        <span style="font-size: 0.88rem; font-weight: 600; color: #831843;">Saldo restante por cobrar:</span>
+                        <strong id="pay-vale-resto-amount" style="color: #be185d; font-size: 1.25rem; font-weight: 800;">0.00 Bs.</strong>
                     </div>
-                    <p class="pay-label" style="margin: 8px 0 4px 0; font-size: 0.8rem; color: #9d174d;">¿Cómo paga el saldo restante?</p>
+                    <p class="pay-label" style="margin: 6px 0 2px 0; font-size: 0.82rem; color: #9d174d; font-weight: 700;">¿Cómo paga el saldo restante?</p>
                     <div class="vale-resto-tabs" id="pay-vale-resto-methods">
                         <button type="button" class="vale-resto-tab active" data-metodo-resto="1">💵<span>Efectivo</span></button>
                         <button type="button" class="vale-resto-tab" data-metodo-resto="3">📱<span>QR</span></button>
                         <button type="button" class="vale-resto-tab" data-metodo-resto="2">💳<span>Tarjeta</span></button>
+                    </div>
+
+                    <!-- Sub-panel para EFECTIVO restante -->
+                    <div id="pay-vale-sub-efectivo" class="vale-sub-panel">
+                        <label class="pay-label" for="pay-vale-ef-recibido" style="margin-bottom: 4px; font-size: 0.78rem;">
+                            ¿Con cuánto paga el restante? <span class="pay-hint">(opcional para calcular cambio)</span>
+                        </label>
+                        <input type="number" id="pay-vale-ef-recibido" class="pay-input" min="0" step="0.01" inputmode="decimal"
+                            placeholder="Monto recibido" style="height: 38px; font-size: 0.95rem; margin-bottom: 4px;">
+                        <div id="pay-vale-ef-cambio-box" class="hide" style="font-size: 0.85rem; color: #047857; font-weight: 700; margin-top: 4px; display: flex; justify-content: space-between;">
+                            <span>Cambio a devolver:</span>
+                            <span id="pay-vale-ef-cambio">0.00 Bs.</span>
+                        </div>
+                    </div>
+
+                    <!-- Sub-panel para QR restante -->
+                    <div id="pay-vale-sub-qr" class="vale-sub-panel hide">
+                        <div style="font-size: 0.82rem; color: #1e293b; font-weight: 600; margin-bottom: 4px;">
+                            📱 Transferir <strong id="pay-vale-qr-amount" style="color: #0284c7; font-size: 0.95rem;">0.00 Bs.</strong> por código QR
+                        </div>
+                        <input type="text" id="pay-vale-qr-ref" class="pay-input" maxlength="40"
+                            placeholder="Referencia QR (opcional)" style="height: 38px; font-size: 0.88rem;">
+                    </div>
+
+                    <!-- Sub-panel para TARJETA restante -->
+                    <div id="pay-vale-sub-tarjeta" class="vale-sub-panel hide">
+                        <div style="font-size: 0.82rem; color: #1e293b; font-weight: 600;">
+                            💳 Cobrar <strong id="pay-vale-tarjeta-amount" style="color: #d97706; font-size: 0.95rem;">0.00 Bs.</strong> en el punto de venta (POS)
+                        </div>
                     </div>
                 </div>
             </div>

@@ -3211,6 +3211,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const inpVale = document.getElementById('pay-vale-monto');
         if (inpVale) inpVale.value = '';
+        const inpValeEf = document.getElementById('pay-vale-ef-recibido');
+        if (inpValeEf) inpValeEf.value = '';
+        const inpValeQrRef = document.getElementById('pay-vale-qr-ref');
+        if (inpValeQrRef) inpValeQrRef.value = '';
+        const efCambioBox = document.getElementById('pay-vale-ef-cambio-box');
+        if (efCambioBox) efCambioBox.classList.add('hide');
         const restoBox = document.getElementById('pay-vale-resto-box');
         if (restoBox) restoBox.classList.add('hide');
         const cubiertoBox = document.getElementById('pay-vale-cubierto-box');
@@ -3319,6 +3325,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cubiertoBox = document.getElementById('pay-vale-cubierto-box');
         const restoAmountEl = document.getElementById('pay-vale-resto-amount');
         const cubiertoMsgEl = document.getElementById('pay-vale-cubierto-msg');
+        const payConfirmBtn = document.getElementById('pay-confirm-btn');
 
         if (!inpVale) return;
         const valNum = round2(parseFloat(inpVale.value) || 0);
@@ -3328,6 +3335,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (valNum <= 0) {
             if (restoBox) restoBox.classList.add('hide');
             if (cubiertoBox) cubiertoBox.classList.add('hide');
+            if (payConfirmBtn && metodoActivo === VALES) {
+                payConfirmBtn.textContent = 'CONFIRMAR PAGO';
+            }
         } else if (valNum >= orderTotal) {
             if (restoBox) restoBox.classList.add('hide');
             if (cubiertoBox) {
@@ -3339,16 +3349,55 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (cubiertoMsgEl) cubiertoMsgEl.textContent = `(Monto exacto: ${valNum.toFixed(2)} Bs.)`;
                 }
             }
+            if (payConfirmBtn && metodoActivo === VALES) {
+                payConfirmBtn.textContent = 'CONFIRMAR PAGO (Vale)';
+            }
         } else {
             const resto = round2(orderTotal - valNum);
             if (cubiertoBox) cubiertoBox.classList.add('hide');
             if (restoBox) {
                 restoBox.classList.remove('hide');
                 if (restoAmountEl) restoAmountEl.textContent = `${resto.toFixed(2)} Bs.`;
+
+                const qrAmountEl = document.getElementById('pay-vale-qr-amount');
+                if (qrAmountEl) qrAmountEl.textContent = `${resto.toFixed(2)} Bs.`;
+
+                const tarjetaAmountEl = document.getElementById('pay-vale-tarjeta-amount');
+                if (tarjetaAmountEl) tarjetaAmountEl.textContent = `${resto.toFixed(2)} Bs.`;
+
+                const subEf = document.getElementById('pay-vale-sub-efectivo');
+                const subQr = document.getElementById('pay-vale-sub-qr');
+                const subTar = document.getElementById('pay-vale-sub-tarjeta');
+
+                if (subEf) subEf.classList.toggle('hide', metodoRestoVale !== EFECTIVO);
+                if (subQr) subQr.classList.toggle('hide', metodoRestoVale !== QR);
+                if (subTar) subTar.classList.toggle('hide', metodoRestoVale !== TARJETA);
+
+                recalcularCambioValeEfectivo(resto);
+            }
+            if (payConfirmBtn && metodoActivo === VALES) {
+                const nombreResto = metodoRestoVale === QR ? 'QR' : (metodoRestoVale === TARJETA ? 'Tarjeta' : 'Efectivo');
+                payConfirmBtn.textContent = `CONFIRMAR PAGO (${valNum.toFixed(2)} Bs. Vale + ${resto.toFixed(2)} Bs. ${nombreResto})`;
             }
         }
 
         actualizarColorTotalPago();
+    }
+
+    function recalcularCambioValeEfectivo(resto) {
+        const inpValeEf = document.getElementById('pay-vale-ef-recibido');
+        const efCambioBox = document.getElementById('pay-vale-ef-cambio-box');
+        const efCambioVal = document.getElementById('pay-vale-ef-cambio');
+        if (!inpValeEf || !efCambioBox || !efCambioVal) return;
+
+        const recibido = round2(parseFloat(inpValeEf.value) || 0);
+        if (recibido > 0 && recibido >= resto) {
+            const cambio = round2(recibido - resto);
+            efCambioVal.textContent = `${cambio.toFixed(2)} Bs.`;
+            efCambioBox.classList.remove('hide');
+        } else {
+            efCambioBox.classList.add('hide');
+        }
     }
 
     function prepararPanelVales() {
@@ -3378,6 +3427,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const panelVales = document.getElementById('pay-panel-vales');
         if (panelVales) {
             panelVales.classList.toggle('hide', metodo !== VALES);
+        }
+
+        const payConfirmBtn = document.getElementById('pay-confirm-btn');
+        const esCort = Boolean(currentWaiter && currentWaiter.es_cortesia);
+        if (payConfirmBtn && metodo !== VALES) {
+            payConfirmBtn.textContent = esCort ? 'CONFIRMAR CORTESÍA' : 'CONFIRMAR PAGO';
         }
 
         if (metodo === 'mixto') {
@@ -3432,7 +3487,31 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const resto = round2(orderTotal - valNum);
                 const idResto = metodoRestoVale || EFECTIVO;
-                return [pago(VALES, valNum), pago(idResto, resto)];
+
+                if (idResto === EFECTIVO) {
+                    const inpValeEf = document.getElementById('pay-vale-ef-recibido');
+                    const efRecibido = round2(parseFloat(inpValeEf ? inpValeEf.value : 0) || 0);
+                    if (efRecibido > 0 && efRecibido + 0.005 < resto) {
+                        mostrarErrorPago(`Con ${efRecibido.toFixed(2)} Bs. no alcanza para cubrir el saldo restante de ${resto.toFixed(2)} Bs.`);
+                        return null;
+                    }
+                }
+
+                let refResto = null;
+                if (idResto === QR) {
+                    const qrRefInput = document.getElementById('pay-vale-qr-ref');
+                    refResto = qrRefInput && qrRefInput.value.trim() ? qrRefInput.value.trim().slice(0, 40) : ('QR-VALE-' + Math.floor(100000 + Math.random() * 900000));
+                } else if (idResto === TARJETA) {
+                    refResto = 'TARJETA-VALE-' + Math.floor(100000 + Math.random() * 900000);
+                }
+
+                const pagoResto = {
+                    id_metodo_pago: idResto,
+                    nombre_metodo: (METODOS[idResto] || {}).nombre || 'Pago',
+                    monto: round2(resto),
+                    referencia: refResto
+                };
+                return [pago(VALES, valNum), pagoResto];
             }
         }
 
@@ -3533,8 +3612,19 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.vale-resto-tab').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             metodoRestoVale = Number(tab.dataset.metodoResto) || EFECTIVO;
+            recalcularVale();
         });
     });
+
+    const inpValeEfListener = document.getElementById('pay-vale-ef-recibido');
+    if (inpValeEfListener) {
+        inpValeEfListener.addEventListener('input', () => {
+            const inpVale = document.getElementById('pay-vale-monto');
+            const valNum = round2(parseFloat(inpVale ? inpVale.value : 0) || 0);
+            const resto = round2(orderTotal - valNum);
+            recalcularCambioValeEfectivo(resto);
+        });
+    }
 
     // FINALIZATION & CHECKOUT SUBMIT
     // Una comanda tarda unas décimas en guardarse. Sin este cerrojo, dos toques
