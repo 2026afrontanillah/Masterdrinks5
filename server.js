@@ -3487,17 +3487,23 @@ app.post('/api/admin/comandas/anular', (req, res) => {
 
 // CREATE CATEGORY
 app.post('/api/admin/categorias', (req, res) => {
-  const { nombre, descripcion, tipo, id_admin, id_evento } = req.body;
+  const { nombre, descripcion, tipo, id_admin, id_evento } = req.body || {};
+  const nomCat = String(nombre || '').trim();
+  if (!nomCat) {
+    return res.status(400).json({ success: false, message: 'La categoría necesita un nombre.' });
+  }
+  const adminId = Number(id_admin) || 1;
+  const eventoId = Number(id_evento) || 1;
   const nowStr = nowSql();
 
   const query = `INSERT INTO categoria_producto (nombre, descripcion, tipo, orden, creado_por_admin, fecha_creacion)
                  VALUES (?, ?, ?, (SELECT COALESCE(MAX(orden), 0) + 1 FROM categoria_producto), ?, ?)`;
-  dbQuery(query, [nombre, descripcion, tipo, id_admin, nowStr], (err, result) => {
+  dbQuery(query, [nomCat, descripcion ? String(descripcion).trim() : null, tipo || 'BEBIDA', adminId, nowStr], (err, result) => {
     if (err) return res.status(400).json({ success: false, message: friendlyDbError(err, 'categoría') });
     const newCatId = result.insertId;
 
     const queryAudit = `INSERT INTO auditoria_admin (id_admin, id_evento, accion, entidad, id_registro, detalle) VALUES (?, ?, 'CREAR_CATEGORIA', 'categoria_producto', ?, ?)`;
-    dbQuery(queryAudit, [id_admin, id_evento || 1, newCatId, `Se creó la categoría ${nombre}`], (errAudit) => {
+    dbQuery(queryAudit, [adminId, eventoId, newCatId, `Se creó la categoría ${nomCat}`], (errAudit) => {
       if (errAudit) console.error(errAudit);
       return res.json({ success: true, id_categoria: newCatId });
     });
@@ -3506,7 +3512,9 @@ app.post('/api/admin/categorias', (req, res) => {
 
 // CREATE PRODUCT
 app.post('/api/admin/productos', (req, res) => {
-  const { id_categoria, nombre, descripcion, tipo_producto, precio_venta, stock_actual, id_admin, id_evento, id_botella_vinculada, vasos_por_botella } = req.body;
+  const { id_categoria, nombre, descripcion, tipo_producto, precio_venta, stock_actual, id_admin, id_evento, id_botella_vinculada, vasos_por_botella } = req.body || {};
+  const adminId = Number(id_admin) || 1;
+  const eventoId = Number(id_evento) || 1;
   const idBotellaVinculada = id_botella_vinculada ? parseInt(id_botella_vinculada, 10) : null;
   const vasosPorBotella = Math.max(1, parseInt(vasos_por_botella || 10, 10));
   const requiere = req.body.requiere_acompanante ? 1 : 0;
@@ -3531,19 +3539,19 @@ app.post('/api/admin/productos', (req, res) => {
 
   const query = `INSERT INTO producto (id_categoria, nombre, descripcion, tipo_producto, precio_venta, stock_actual, foto, requiere_acompanante, es_acompanante, orden, creado_por_admin, fecha_creacion, id_botella_vinculada, vasos_por_botella)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(orden), 0) + 1 FROM producto WHERE id_categoria = ?), ?, ?, ?, ?)`;
-  dbQuery(query, [id_categoria, String(nombre).trim(), descripcion, tipo_producto, round2(precio), stockInicial, fotoNueva || null, requiere, esAcomp, id_categoria, id_admin, nowStr, idBotellaVinculada, vasosPorBotella], (err, result) => {
+  dbQuery(query, [id_categoria, String(nombre).trim(), descripcion, tipo_producto, round2(precio), stockInicial, fotoNueva || null, requiere, esAcomp, id_categoria, adminId, nowStr, idBotellaVinculada, vasosPorBotella], (err, result) => {
     if (err) return res.status(400).json({ success: false, message: friendlyDbError(err, 'producto') });
     const newProdId = result.insertId;
 
     if (stockInicial > 0) {
       const queryMov = `INSERT INTO movimiento_stock (id_producto, id_admin, tipo_movimiento, cantidad, stock_anterior, stock_nuevo, motivo) VALUES (?, ?, 'ENTRADA', ?, 0, ?, 'Carga inicial de stock')`;
-      dbQuery(queryMov, [newProdId, id_admin, stockInicial, stockInicial], (errMov) => {
+      dbQuery(queryMov, [newProdId, adminId, stockInicial, stockInicial], (errMov) => {
         if (errMov) console.error(errMov);
       });
     }
 
     const queryAudit = `INSERT INTO auditoria_admin (id_admin, id_evento, accion, entidad, id_registro, detalle) VALUES (?, ?, 'CREAR_PRODUCTO', 'producto', ?, ?)`;
-    dbQuery(queryAudit, [id_admin, id_evento || 1, newProdId, `Se creó el producto ${nombre} con stock inicial de ${stock_actual || 0}`], (errAudit) => {
+    dbQuery(queryAudit, [adminId, eventoId, newProdId, `Se creó el producto ${nombre} con stock inicial de ${stock_actual || 0}`], (errAudit) => {
       if (errAudit) console.error(errAudit);
       return res.json({ success: true, id_producto: newProdId });
     });

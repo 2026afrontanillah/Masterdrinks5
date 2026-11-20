@@ -145,8 +145,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const TOAST_ICONOS = { ok: '✓', error: '✕', warn: '!', info: 'i' };
 
     function notify(mensaje, tipo = 'info', ms) {
-        const pila = document.getElementById('toast-stack');
-        if (!pila) return;
+        let pila = document.getElementById('toast-stack');
+        if (!pila) {
+            pila = document.createElement('div');
+            pila.id = 'toast-stack';
+            pila.className = 'toast-stack';
+            document.body.appendChild(pila);
+        }
 
         const toast = document.createElement('div');
         toast.className = 'toast toast-' + tipo;
@@ -5972,24 +5977,44 @@ document.addEventListener('DOMContentLoaded', () => {
     // Form: Create Category
     document.getElementById('form-create-category').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const nombre = document.getElementById('cat-name').value;
-        const descripcion = document.getElementById('cat-desc').value;
-        const tipo = document.getElementById('cat-type').value;
+        const nombreInput = document.getElementById('cat-name');
+        const descInput = document.getElementById('cat-desc');
+        const tipoInput = document.getElementById('cat-type');
+
+        const nombre = nombreInput ? nombreInput.value.trim() : '';
+        const descripcion = descInput ? descInput.value.trim() : '';
+        const tipo = tipoInput ? tipoInput.value : 'BEBIDA';
+
+        if (!nombre) {
+            notify('Ingresa el nombre de la categoría.', 'error');
+            if (nombreInput) nombreInput.focus();
+            return;
+        }
 
         try {
             const response = await fetch('/api/admin/categorias', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nombre, descripcion, tipo, id_admin: currentUser.id_admin, id_evento: currentUser.id_evento })
+                body: JSON.stringify({
+                    nombre,
+                    descripcion,
+                    tipo,
+                    id_admin: currentUser ? currentUser.id_admin : 1,
+                    id_evento: currentUser ? currentUser.id_evento : 1
+                })
             });
             const data = await response.json();
 
             if (data.success) {
-                notify('Categoría creada.', 'ok');
+                notify(`Categoría "${nombre}" creada con éxito.`, 'ok');
                 document.getElementById('form-create-category').reset();
-                loadCatalogSetup(); // Refresh product selector
+                await Promise.all([
+                    cargarCatalogoAdmin(),
+                    loadCatalogSetup(),
+                    fetchProductsAndMenu()
+                ]);
             } else {
-                notify(data.message || 'No se pudo completar la operación.', 'error');
+                notify(data.message || 'No se pudo crear la categoría.', 'error');
             }
         } catch (err) {
             notify('Sin conexión con el servidor. Revisa el WiFi.', 'error');
@@ -6000,7 +6025,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('form-create-product').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id_categoria = document.getElementById('prod-cat').value;
-        const nombre = document.getElementById('prod-name').value;
+        const nombreInput = document.getElementById('prod-name');
+        const nombre = nombreInput ? nombreInput.value.trim() : '';
         const descripcion = document.getElementById('prod-desc').value;
         const tipo_producto = document.getElementById('prod-type').value;
         const precio_venta = document.getElementById('prod-price').value;
@@ -6008,6 +6034,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const id_botella_vinculada = document.getElementById('prod-botella-vinculada')?.value || null;
         const vasos_por_botella = parseInt(document.getElementById('prod-vasos-por-botella')?.value, 10) || 10;
+
+        if (!nombre) {
+            notify('Ingresa el nombre del producto.', 'error');
+            if (nombreInput) nombreInput.focus();
+            return;
+        }
 
         try {
             const response = await fetch('/api/admin/productos', {
@@ -6019,13 +6051,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     es_acompanante: document.getElementById('prod-es-acomp').checked,
                     id_botella_vinculada, vasos_por_botella,
                     id_categoria, nombre, descripcion, tipo_producto, precio_venta, stock_actual,
-                    id_admin: currentUser.id_admin, id_evento: currentUser.id_evento
+                    id_admin: currentUser ? currentUser.id_admin : 1,
+                    id_evento: currentUser ? currentUser.id_evento : 1
                 })
             });
             const data = await response.json();
 
             if (data.success) {
-                notify('Producto creado.', 'ok');
+                notify(`Producto "${nombre}" creado con éxito.`, 'ok');
                 document.getElementById('form-create-product').reset();
                 // reset() no vacía la vista previa de la foto: es un <div>, no
                 // un campo del formulario.
@@ -6034,9 +6067,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 // porque el alta siguiente no debe heredar nada de la anterior.
                 document.getElementById('prod-requiere').checked = false;
                 document.getElementById('prod-es-acomp').checked = false;
-                cargarCatalogoAdmin();
+                await Promise.all([
+                    cargarCatalogoAdmin(),
+                    loadCatalogSetup(),
+                    fetchProductsAndMenu()
+                ]);
             } else {
-                notify(data.message || 'No se pudo completar la operación.', 'error');
+                notify(data.message || 'No se pudo crear el producto.', 'error');
             }
         } catch (err) {
             notify('Sin conexión con el servidor. Revisa el WiFi.', 'error');
@@ -6671,7 +6708,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 onBorrar: () => borrar(
                     '/api/admin/categorias/' + c.id_categoria,
                     '¿Eliminar la categoría "' + c.nombre + '" por completo de la base de datos?',
-                    () => { cargarCatalogoAdmin(); loadCatalogSetup(); })
+                    () => { Promise.all([cargarCatalogoAdmin(), loadCatalogSetup(), fetchProductsAndMenu()]); })
             });
             if (!estaActiva) {
                 fila.classList.add('cat-desactivada');
@@ -6795,7 +6832,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             ? '"' + p.nombre + '" ya tiene ventas.\n\nSe retirará de la caja pero seguirá ' +
                               'apareciendo en el cierre. ¿Continuar?'
                             : '¿Eliminar "' + p.nombre + '"?',
-                        () => { cargarCatalogoAdmin(); loadCatalogSetup(); })
+                        () => { Promise.all([cargarCatalogoAdmin(), loadCatalogSetup(), fetchProductsAndMenu()]); })
                 });
                 if (!estaActivo) {
                     fila.classList.add('cat-desactivada');
