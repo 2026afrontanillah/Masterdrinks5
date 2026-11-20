@@ -7,6 +7,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "reiniciar": "node tools/reiniciar-ventas.js",
+    "limpiar": "node tools/limpiar-db.js",
     "optimizar": "node tools/optimizar-db.js",
     "medir": "node tools/medir.js",
     "capturas": "node tools/capturas.js",
