@@ -889,8 +889,30 @@ document.addEventListener('DOMContentLoaded', () => {
         recalcularTotal();
     }
 
+    const PRIORIDAD_CATEGORIAS = [
+        'botellas premium',
+        'botellas',
+        'cerveza',
+        'cervezas',
+        'vasos',
+        'gaseosas / otros',
+        'gaseosas otros'
+    ];
+
+    function obtenerPrioridadCategoria(c) {
+        if (!c) return 999;
+        const n = String(c.nombre || '').trim().toLowerCase();
+        for (let i = 0; i < PRIORIDAD_CATEGORIAS.length; i++) {
+            if (n === PRIORIDAD_CATEGORIAS[i]) return i;
+        }
+        return 900 + (Number(c.orden != null ? c.orden : 0));
+    }
+
     function ordenarCategorias(lista) {
         return [...lista].sort((a, b) => {
+            const prioA = obtenerPrioridadCategoria(a);
+            const prioB = obtenerPrioridadCategoria(b);
+            if (prioA !== prioB) return prioA - prioB;
             const ordA = Number(a.orden != null ? a.orden : 0);
             const ordB = Number(b.orden != null ? b.orden : 0);
             if (ordA !== ordB) return ordA - ordB;
@@ -900,9 +922,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function iconoCategoria(nombre, tipo) {
         const n = (nombre || '').toLowerCase().trim();
+        if (n.includes('premium')) return '💎';
         if (n.startsWith('botella')) return '🍾';
-        if (n.startsWith('soda')) return '🥤';
-        if (n.startsWith('cerveza')) return '🍺';
+        if (n.includes('cerveza')) return '🍺';
+        if (n.startsWith('vaso')) return '🥃';
+        if (n.includes('gaseosa') || n.includes('soda')) return '🥤';
         if (n.startsWith('agua')) return '💧';
         if (n.startsWith('comida')) return '🍔';
         if (tipo === 'COMIDA') return '🍔';
